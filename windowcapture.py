@@ -1,5 +1,5 @@
 import numpy as np
-import win32gui, win32ui, win32con
+import win32gui, win32ui, win32con, win32api, win32process
 
 class WindowCapture:
 
@@ -36,6 +36,42 @@ class WindowCapture:
         # images into actual screen positions
         self.offset_x = window_rect[0] + self.cropped_x
         self.offset_y = window_rect[1] + self.cropped_y
+
+    def activate(self):
+        # bring the game window to the foreground so simulated keystrokes
+        # (which always go to whatever window has OS focus) actually reach it
+        if win32gui.GetForegroundWindow() == self.hwnd:
+            return
+
+        win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
+
+        try:
+            win32gui.SetForegroundWindow(self.hwnd)
+            if win32gui.GetForegroundWindow() == self.hwnd:
+                return
+        except Exception:
+            pass
+
+        # Windows blocks SetForegroundWindow from processes that didn't
+        # receive the most recent input, which is exactly our situation on
+        # a timer-driven key send. Work around it by attaching our input
+        # thread to the current foreground window's thread, which lifts
+        # the restriction, then detach again.
+        try:
+            fg_hwnd = win32gui.GetForegroundWindow()
+            fg_thread, _ = win32process.GetWindowThreadProcessId(fg_hwnd)
+            cur_thread = win32api.GetCurrentThreadId()
+
+            if fg_thread != cur_thread:
+                win32process.AttachThreadInput(cur_thread, fg_thread, True)
+
+            win32gui.BringWindowToTop(self.hwnd)
+            win32gui.SetForegroundWindow(self.hwnd)
+
+            if fg_thread != cur_thread:
+                win32process.AttachThreadInput(cur_thread, fg_thread, False)
+        except Exception:
+            pass
 
     def get_screenshot(self):
 

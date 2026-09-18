@@ -169,6 +169,8 @@ class FishingBot:
         self.initial_time = time()
         self.timer_action = time()
 
+        self.wincap.activate()
+
         mouse_x = int(self.FISH_WINDOW_POSITION[0] + self.wincap.offset_x + 200)
         mouse_y = int(self.FISH_WINDOW_POSITION[1] + self.wincap.offset_y + 200)
 
@@ -209,6 +211,7 @@ class FishingBot:
 
             if time() - self.timer_action > self.bait_time:
                 self.detect_text = True
+                self.wincap.activate()
                 pydirectinput.keyDown('2')
                 pydirectinput.keyUp('2')
                 self.state = 1
@@ -218,6 +221,7 @@ class FishingBot:
 
         if self.state == 1:
             if time() - self.timer_action > self.throw_time:
+                self.wincap.activate()
                 pydirectinput.keyDown('1')
                 pydirectinput.keyUp('1')
                 self.state = 2
