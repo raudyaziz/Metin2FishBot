@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Precomputed puzzle solver table (100 MB, see README)
+data/jigsaw_table.bin

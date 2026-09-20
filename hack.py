@@ -19,8 +19,15 @@ while True:
             fishbot.botting = not fishbot.botting
             puzzleBot.botting = False
         if event == '-BUTTONPUZZLESTART-':
-            puzzleBot.set_to_begin(values)
-            puzzleBot.botting = not puzzleBot.botting
+            if puzzleBot.botting:
+                puzzleBot.botting = False
+            else:
+                try:
+                    puzzleBot.set_to_begin(values)
+                except (FileNotFoundError, ValueError) as error:
+                    sg.popup_error(str(error))
+                    continue
+                puzzleBot.botting = True
             fishbot.botting = False
 
     if fishbot.botting:

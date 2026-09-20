@@ -6,11 +6,16 @@ from time import time
 from windowcapture import WindowCapture
 from tetris import Tetris
 from piece import Piece
-import json
+from jigsaw_solver import JigsawSolver
 import constants
 
 
 fish_jigsaw_chest = cv.imread("images/fish_jigsaw_chest.png")
+puzzle_window = cv.imread("images/puzzle_window.png")
+
+# Offset from the top-left of puzzle_window.png (the window's title bar) to the
+# top-left of the puzzle area that PUZZLE_WINDOW_POSITION points at.
+PUZZLE_WINDOW_ANCHOR_OFFSET = (4, 31)
 
 class PuzzleBot:
 
@@ -38,13 +43,26 @@ class PuzzleBot:
     state = 0
 
     end = False
-    dictdump = None
+    solver = None
 
     def set_to_begin(self, values):
         self.wincap = WindowCapture(constants.GAME_NAME)
         self.state = 0
-        with open('pieces_second.json') as handle:
-            self.dictdump = json.loads(handle.read())
+        if self.solver is None:
+            self.solver = JigsawSolver()
+        self.locate_puzzle_window()
+
+    def locate_puzzle_window(self):
+        screenshot = self.wincap.get_screenshot()
+        result = cv.matchTemplate(screenshot, puzzle_window, cv.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv.minMaxLoc(result)
+
+        if max_val < 0.7:
+            raise ValueError("Could not find the Fishing Jigsaw window in the game. "
+                             "Open it and keep it fully visible before pressing START.")
+
+        self.PUZZLE_WINDOW_POSITION = (max_loc[0] + PUZZLE_WINDOW_ANCHOR_OFFSET[0],
+                                       max_loc[1] + PUZZLE_WINDOW_ANCHOR_OFFSET[1])
 
     def set_puzzle_state(self, crop_img):
 
@@ -148,49 +166,21 @@ class PuzzleBot:
         
         piece = Piece(self.new_piece)
 
-        decision, pos = self.tetris.find_first(piece, self.dictdump)
+        move = self.solver.best_move(self.tetris.board, piece.piece_type)
+        if move is None:
+            return None
+
+        row, col = move
         paint_c = 32
-        if decision == 1:
 
-            self.tetris.insert_piece(pos[0], pos[1], piece)
-            if self.tetris.verify_end():
-                self.end = True
-            mouse_x = 15 + paint_c*pos[1] + self.PUZZLE_WINDOW_POSITION[0] + self.wincap.offset_x
-            mouse_y = 15 + paint_c*pos[0] + self.PUZZLE_WINDOW_POSITION[1] + self.wincap.offset_y
-            pydirectinput.click(mouse_x, mouse_y)
+        self.tetris.insert_piece(row, col, piece)
+        if self.tetris.verify_end():
+            self.end = True
+        mouse_x = 15 + paint_c*col + self.PUZZLE_WINDOW_POSITION[0] + self.wincap.offset_x
+        mouse_y = 15 + paint_c*row + self.PUZZLE_WINDOW_POSITION[1] + self.wincap.offset_y
+        pydirectinput.click(mouse_x, mouse_y)
 
-            return None
-
-        if decision == 2:
-            return None
-
-        possibilites = self.tetris.find_possibles(piece)
-
-        pices_count = 0
-
-        for i in range(1,7):
-            if i != piece.piece_type:
-                possis = self.tetris.find_possibles(Piece(i))
-                if len(possis):
-                    pices_count += 1
-
-        if piece.piece_type == 1 and pices_count != 0:
-            possibilites = [i for i in possibilites if self.tetris.verify_isolated(i[0], i[1])]
-
-        if len(possibilites):
-
-            a = self.tetris.choose_better(piece, possibilites)
-
-            self.tetris.insert_piece(a[0], a[1], piece)
-            if self.tetris.verify_end():
-                self.end = True
-            mouse_x = 15 + paint_c*a[1] + self.PUZZLE_WINDOW_POSITION[0] + self.wincap.offset_x
-            mouse_y = 15 + paint_c*a[0] + self.PUZZLE_WINDOW_POSITION[1] + self.wincap.offset_y
-            pydirectinput.click(mouse_x, mouse_y)
-
-            return True
-
-        return None
+        return True
 
     def try_to_put_chest(self):
         screenshot = self.wincap.get_screenshot()

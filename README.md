@@ -73,6 +73,8 @@ https://drive.google.com/file/d/1LV5l4il2IN62abYDD4pKdgSx6bEs1cIk/view
 
 - Now you also can use the bot to solve the mini game puzzle. Just Select Puzzle Tab and open the mini game puzzle. Don't move the mini game puzzle window.
 
+- The puzzle solver plays the optimal strategy from a precomputed lookup table, `data/jigsaw_table.bin.gz` (already in the repo). It is unpacked to `data/jigsaw_table.bin` (100 MB, git-ignored) the first time you press START on the Puzzle tab. To regenerate it, run `cargo run --release --bin export` in [aguunu/fishing-jigsaw](https://github.com/aguunu/fishing-jigsaw) and gzip the result into `data`.
+
 
 ## Check list
 
